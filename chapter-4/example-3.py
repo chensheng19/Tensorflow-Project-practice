@@ -80,8 +80,8 @@ with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
 
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess = sess,coord = coord)
+    coord = tf.train.Coordinator() #创建队列协调器
+    threads = tf.train.start_queue_runners(sess = sess,coord = coord) # 启动队列线程
 
     try:
         for step in np.arange(10):
@@ -90,6 +90,7 @@ with tf.Session() as sess:
             images,label = sess.run([image_batch,label_batch])
 
             show_img(step,label,images,batch_size)
+            print(label)
 
     except tf.errors.OutOfRangeError:
         print("Done!")
