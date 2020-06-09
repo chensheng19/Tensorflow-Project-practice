@@ -12,6 +12,7 @@
 #=====================================================
 import tensorflow as tf
 
+# 1. 逐行读取数据并分离标签
 def read_data(file_queue):
     
     reader = tf.TextLineReader(skip_header_lines = 1)
@@ -24,13 +25,14 @@ def read_data(file_queue):
     label_column = csv_column[-1]
     return tf.stack(feature_column),label_column
 
+#2. 生成队列中的批次样本
 def create_pipeline(filename,batch_size,num_epochs = None):
     
     file_queue = tf.train.string_input_producer([filename],num_epochs = num_epochs)
 
     feature,label = read_data(file_queue)
 
-    min_after_dequeue = 1000
+    min_after_dequeue = 1000 #队列中至少要存在1000条数据，这个值越大，shuffle效果越好
     capacity = min_after_dequeue + batch_size
 
     feature_batch,label_batch = tf.train.shuffle_batch([feature,label],
