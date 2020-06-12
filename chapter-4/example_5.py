@@ -43,35 +43,40 @@ dir_path = "man_woman"
 (filenames,labels),_ = load_smaple(dir_path,False)
 
 def make_TFRec(filenames,labels):
+    #1.创建writer
     writer = tf.python_io.TFRecordWriter("mydata.tfrecords")
     for i in tqdm(range(len(labels))):
         image = Image.open(filenames[i])
         img = image.resize((256,256))
         img_raw = img.tobytes()
-        example = tf.train.Example(
-                  features = tf.train.Features(
+        #2.读取到的内容转化为tfrecords格式
+        example = tf.train.Example( #example
+                  features = tf.train.Features(#features
                       feature = {"label": tf.train.Feature(int64_list = tf.train.Int64List(value = [labels[i]])),
-                                 "img_raw": tf.train.Feature(bytes_list = tf.train.BytesList(value = [img_raw]))}))
-        writer.write(example.SerializeToString())
+                                 "img_raw": tf.train.Feature(bytes_list = tf.train.BytesList(value = [img_raw]))}))#feature字典
+        writer.write(example.SerializeToString())#序列化压缩
     writer.close()
 
 make_TFRec(filenames,labels)
 
 def read_and_decode(filenames,flag="train",batch_size=3):
+    #1.读取文件生成队列
     if flag == "train":
         filename_queue = tf.train.string_input_producer(filenames)
     else:
         filename_queue = tf.train.string_input_producer(filenames,num_epochs=1,shuffle=False)
-
+    #2.从队列读取example
     reader = tf.TFRecordReader()
     _,serialized_example = reader.read(filename_queue)
+    #3.将example解析为features
     features = tf.parse_single_example(serialized_example,
                                        features = {"label":tf.FixedLenFeature([],tf.int64),
                                                    "img_raw":tf.FixedLenFeature([],tf.string)})
+    #4.将features解析为图片数据
     image = tf.decode_raw(features['img_raw'],tf.uint8)
     image = tf.reshape(image,[256,256,3])
     label = tf.cast(features['label'],tf.int32)
-
+    
     if flag == "train":
         image = tf.cast(image,tf.float32) * (1./255) - 0.5
         img_batch,label_batch = tf.train.batch([image,label],batch_size=batch_size,capacity=20)
@@ -112,26 +117,3 @@ with tf.Session() as sess:
         coord.request_stop()
         coord.join(threads)
         print("stop()")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
