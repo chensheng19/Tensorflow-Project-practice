@@ -104,44 +104,45 @@ class MyNasNetModel(object):
                 global_step=self.global_step,
                 decay_steps=100,decay_rate=0.2)
 
-        last_optimizer = tf.train.AdamOPtimizer(learning_rate1) #
+        last_optimizer = tf.train.AdamOPtimizer(learning_rate1) #定义模型优化器
         full_optimizer = tf.train.AdamOPtimizer(learning_rate2)
 
-        updates_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(updates_ops):
+        updates_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)#tf.GraphKeys.UPDATE_OPS会保存在训练前需要完成的一些操作
+        with tf.control_dependencies(updates_ops):#tf.control_dependencies，该函数保证其辖域中的操作必须要在该函数所传递的参数中的操作完成后再进行，保证batch归一化时移动均值和方差的更新
             self.last_train_op = last_optimizer.minimize(loss,self.global_step,var_list=self.tuning_variables)
             self.full_train_op = full_optimizer.minimize(loss,self.global_step)
 
-        self.build_acc_base(labels)
+        self.build_acc_base(labels) # 定义模型评估指标
 
-        tf.summary.scalar('accuracy',self.accuracy)
+        tf.summary.scalar('accuracy',self.accuracy) #日志记录
         tf.summary.scalar('accuracy_top_5',self.accuracy_top_5)
 
-        self.merged = tf.summary.merge_all()
+        self.merged = tf.summary.merge_all()#将收集的所有默认图表并合并
 
-        self.train_writer = tf.summary.FileWriter('./log_dir/train')
+        self.train_writer = tf.summary.FileWriter('./log_dir/train') #日志写入
         self.eval_writer = tf.summary.FileWriter('./log_dir/eval')
 
-        self.saver,self.save_path = self.load_cpk(self.global_step,None)
-
+        self.saver,self.save_path = self.load_cpk(self.global_step,None) #定义要保存到检查点文件中的变量
+    #模型构建，并用参数mode来指定模型的使用场景，如训练、推理
     def build_model(self,mode='train',testdata_dir='./data/val',traindata_dir='./data/train',batch_size=32,learning_rate1=0.001,learning_rate2=0.001):
 
         if mode == 'train':
-            tf.reset_default_graph()
-
+            tf.reset_default_graph() #用于清除默认图形堆栈并重置全局默认图形
+            
+            #创建训练、测试的dataset数据集
             dataset,self.num_classes = create_dataset_fromdir(traindata_dir,batch_size)
             testdataset,_ = create_dataset_fromdir(testdata_dir,batch_size,training=False)
-
+            
+            #创建一个可初始化的迭代器
             iterator = tf.data.Iterator.from_structure(dataset.output_types,dataset.output_shapes)
-            images,labels = iterator.get_next()
-            iterator.make_initializer
+            images,labels = iterator.get_next() #读取数据
 
             self.train_init_op = iterator.make_initializer(dataset)
             self.test_init_op = iterator.make_initializer(testdataset)
 
             self.build_model_train(images,labels,learning_rate1,learning_rate2,True)
             self.global_init = tf.global_variables_initializer()
-            tf.get_default_graph().finalize()
+            tf.get_default_graph().finalize()#将后续图设为只读模式
 
         elif mode == 'test':
             tf.reset_default_graph()
